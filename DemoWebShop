@@ -1,0 +1,104 @@
+import pytest
+from playwright.sync_api import sync_playwright, Page
+
+BASE_URL="https://demowebshop.tricentis.com/"
+
+USERNAME = "rahav1289_test_20260925@art2mart.com"
+PASSWORD = "Gtasaer@123"
+
+@pytest.fixture
+def page_context():
+    with sync_playwright() as p:
+        browser=p.chromium.launch(headless=False)
+        context=browser.new_context()
+        context.tracing.start(screenshots=True,snapshots=True,sources=True)
+        page=context.new_page()
+        yield page
+        context.tracing.stop(path="website.zip")
+        context.close()
+        browser.close()
+
+def test_Register(page_context: Page):
+    page=page_context
+    page.goto(BASE_URL)
+    page.get_by_role("link", name="Register").click()
+    page.locator("#gender-male").check()
+    page.locator("#FirstName").fill("Carl")
+    page.locator("#LastName").fill("Johanson")
+    page.locator("#Email").fill(USERNAME)
+    page.locator("#Password").fill(PASSWORD)
+    page.locator("#ConfirmPassword").fill(PASSWORD)
+    page.get_by_role("button",name="Register").click()
+
+def test_login(page_context:Page):
+    page=page_context
+    page.goto(BASE_URL)
+    page.get_by_role("link",name="Log in").click()
+    page.locator("#Email").fill(USERNAME)
+    page.locator("#Password").fill(PASSWORD)
+    page.locator("#RememberMe").check()
+    page.get_by_role("button", name="Log in").click()
+
+@pytest.fixture
+def login_in_page(page_context: Page):
+    page=page_context
+    page.goto(BASE_URL)
+    page.get_by_role("link",name="Log in").click()
+    page.locator("#Email").fill(USERNAME)
+    page.locator("#Password").fill(PASSWORD)
+    page.locator("#RememberMe").check()
+    page.get_by_role("button", name="Log in").click()
+    return page
+
+def test_navigation(login_in_page: Page):
+    page=login_in_page
+    a=["Books","Computers","Electronics","Apparel & Shoes","Digital downloads","Jewelry","Gift Cards"]
+    for A in a:
+        page.get_by_role("link", name=A).first.click()
+        page.goto(BASE_URL)
+
+def test_search(login_in_page: Page):
+    page=login_in_page
+    page.locator("#small-searchterms").fill("camera")
+    page.keyboard.press("Enter")
+    page.wait_for_load_state("networkidle")
+
+def test_product_Addtocart(login_in_page: Page):
+    page=login_in_page
+    page.get_by_role("link", name="Apparel & Shoes").first.click()
+    page.locator("select[name='products-orderby']").select_option(value="Name: Z to A")
+    page.locator("select[name='products-viewmode']").select_option(value="List")
+    page.get_by_role("link", name="Next").first.click()
+    page.get_by_role("link", name="50's Rockabilly Polka Dot Top JR Plus Size").first.click()
+    page.mouse.wheel(0,500)
+    page.get_by_role("button",name="Add to cart").first.click()
+    page.wait_for_load_state("networkidle")
+
+def test_product_purchase(login_in_page: Page):
+    page=login_in_page
+    page.get_by_role("link",name="Shopping cart").first.click()
+    page.locator("select[name='CountryId']").select_option(value="India")
+    page.locator("#ZipPostalCode").fill("440024")
+    page.get_by_role("button", name="Estimate shipping").click()
+    page.locator("#termsofservice").check()
+    page.get_by_role("button", name="checkout").click()
+    page.locator("select[name='BillingNewAddress.CountryId']").select_option(value="India")
+    page.locator("#BillingNewAddress_City").fill("Nagpur")
+    page.locator("#BillingNewAddress_Address1").fill("Raghunath Nager")
+    page.locator("#BillingNewAddress_ZipPostalCode").fill("440024")
+    page.locator("#BillingNewAddress_PhoneNumber").fill("7721349021")
+    page.get_by_role("button", name="Continue").click()
+    page.locator("#PickUpInStore").check()
+    page.get_by_role("button", name="Continue").click()
+    page.locator("#paymentmethod_2").check()
+    page.get_by_role("button", name="Continue").click()
+    page.locator("select[name='CreditCardType']").select_option(value="Master card")
+    page.locator("#CardholderName").fill("Rockey")
+    page.locator("#CardNumber").fill("5123450000000008")
+    page.locator("select[name='ExpireYear']").select_option(value="2028")
+    page.locator("#CardCode").fill("678")
+    page.get_by_role("button", name="Continue").click()
+    page.get_by_role("button", name="Confirm").click()
+    page.get_by_text("Thank you").is_visible()
+    page.wait_for_load_state("networkidle")
+    page.screenshot(path="thankyou.png",full_page=True)
